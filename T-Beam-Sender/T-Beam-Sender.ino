@@ -22,7 +22,12 @@ String timestamp;
 TinyGPSPlus gps;
 HardwareSerial GPS(1);
 
+char ID[23];
 void setup() {
+  uint64_t chipid = ESP.getEfuseMac(); // The chip ID is essentially its MAC address(length: 6 bytes).
+  uint16_t chip = (uint16_t)(chipid >> 32);
+
+  snprintf(ID, 23, "IAT-%04X%08X", chip, (uint32_t)chipid);
   Wire.begin(21, 22);
   if (!axp.begin(Wire, AXP192_SLAVE_ADDRESS)) {
     Serial.println("AXP192 Begin PASS");
@@ -69,7 +74,9 @@ void setup() {
   delay(1500);
 }
 
-void loop() {
+void loop()
+{
+  Serial.println(ID);
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_10);
@@ -79,23 +86,22 @@ void loop() {
   display.drawString(0, 20, "Longitude:");
   display.drawString(50, 20, String(gps.location.lng(), 5));
   display.display();
+
   //Build timestamp
   struct tm  timeinfo;
   unsigned long int unixtime;
-
   timeinfo.tm_year =  gps.date.year() - 1900;
   timeinfo.tm_mon = gps.date.month() - 1;
   timeinfo.tm_mday =  gps.date.day();
   timeinfo.tm_hour =  gps.time.hour();
   timeinfo.tm_min =  gps.time.minute();
   timeinfo.tm_sec = gps.time.second();
-
   unixtime = mktime(&timeinfo);
-  Serial.println("");
   printf("unixtime = %u\n", unixtime);
-  
+
   // send packet
   LoRa.beginPacket();
+  LoRa.print(ID);
   LoRa.print(gps.location.lat(), 5);
   LoRa.print(";");
   LoRa.print(gps.location.lng(), 5);
